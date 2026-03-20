@@ -15,6 +15,7 @@ use cmds::js::{
     lint_cmd, next_cmd, npm_cmd, playwright_cmd, pnpm_cmd, prettier_cmd, prisma_cmd, tsc_cmd,
     vitest_cmd,
 };
+use cmds::jvm::sbt_cmd;
 use cmds::python::{mypy_cmd, pip_cmd, pytest_cmd, ruff_cmd};
 use cmds::ruby::{rake_cmd, rspec_cmd, rubocop_cmd};
 use cmds::rust::{cargo_cmd, runner};
@@ -641,6 +642,12 @@ enum Commands {
         command: GoCommands,
     },
 
+    /// SBT (Scala Build Tool) commands with compact output
+    Sbt {
+        #[command(subcommand)]
+        command: SbtCommands,
+    },
+
     /// Graphite (gt) stacked PR commands with compact output
     Gt {
         #[command(subcommand)]
@@ -1028,6 +1035,31 @@ enum GoCommands {
         args: Vec<String>,
     },
     /// Passthrough: runs any unsupported go subcommand directly
+    #[command(external_subcommand)]
+    Other(Vec<OsString>),
+}
+
+#[derive(Subcommand)]
+enum SbtCommands {
+    /// Run tests with compact output (90% token reduction via ScalaTest filtering)
+    Test {
+        /// Additional sbt test arguments
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+    /// Compile with compact output (errors only)
+    Compile {
+        /// Additional sbt compile arguments
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+    /// Run application with noise-stripped output
+    Run {
+        /// Additional sbt run arguments
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+    /// Passthrough: runs any unsupported sbt subcommand directly
     #[command(external_subcommand)]
     Other(Vec<OsString>),
 }
@@ -2022,6 +2054,21 @@ fn main() -> Result<()> {
             }
         },
 
+        Commands::Sbt { command } => match command {
+            SbtCommands::Test { args } => {
+                sbt_cmd::run_test(&args, cli.verbose)?;
+            }
+            SbtCommands::Compile { args } => {
+                sbt_cmd::run_compile(&args, cli.verbose)?;
+            }
+            SbtCommands::Run { args } => {
+                sbt_cmd::run_run(&args, cli.verbose)?;
+            }
+            SbtCommands::Other(args) => {
+                sbt_cmd::run_other(&args, cli.verbose)?;
+            }
+        },
+
         Commands::Gt { command } => match command {
             GtCommands::Log { args } => {
                 gt_cmd::run_log(&args, cli.verbose)?;
@@ -2267,6 +2314,7 @@ fn is_operational_command(cmd: &Commands) -> bool {
             | Commands::Rspec { .. }
             | Commands::Pip { .. }
             | Commands::Go { .. }
+            | Commands::Sbt { .. }
             | Commands::GolangciLint { .. }
             | Commands::Gt { .. }
     )

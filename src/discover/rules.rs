@@ -51,6 +51,8 @@ pub const PATTERNS: &[&str] = &[
     r"^(?:bundle\s+exec\s+)?(?:bin/)?(?:rake|rails)\s+test",
     r"^(?:bundle\s+exec\s+)?rspec(?:\s|$)",
     r"^(?:bundle\s+exec\s+)?rubocop(?:\s|$)",
+    // Scala/SBT
+    r"^sbt\s+(test|compile|run|clean|assembly|package)",
     // AWS CLI
     r"^aws\s+",
     // PostgreSQL
@@ -376,6 +378,15 @@ pub const RULES: &[RtkRule] = &[
         category: "Build",
         savings_pct: 65.0,
         subcmd_savings: &[],
+        subcmd_status: &[],
+    },
+    // Scala/SBT
+    RtkRule {
+        rtk_cmd: "rtk sbt",
+        rewrite_prefixes: &["sbt"],
+        category: "Build",
+        savings_pct: 80.0,
+        subcmd_savings: &[("test", 90.0), ("compile", 75.0)],
         subcmd_status: &[],
     },
     // AWS CLI
